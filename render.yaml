@@ -6,8 +6,7 @@ services:
     buildCommand: |
       python -m pip install --upgrade pip
       pip install -r requirements.txt
-      export PYTHONPATH=$PYTHONPATH:$(pwd)
-    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120 --log-level debug
+    startCommand: gunicorn wsgi:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120 --log-level debug
     envVars:
       - key: FLASK_ENV
         value: production
