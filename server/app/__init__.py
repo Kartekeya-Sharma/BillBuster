@@ -42,61 +42,27 @@ if not app.debug:
 
 # Initialize Firebase Admin
 try:
-    # Get the private key and ensure it's properly formatted
-    private_key = os.getenv("FIREBASE_PRIVATE_KEY", "")
-    app.logger.info("Private key length: %d", len(private_key) if private_key else 0)
+    # Get the service account JSON from environment variable
+    service_account_json = os.getenv("FIREBASE_SERVICE_ACCOUNT", "")
+    app.logger.info("Service account JSON length: %d", len(service_account_json) if service_account_json else 0)
     
-    if not private_key:
-        raise ValueError("FIREBASE_PRIVATE_KEY environment variable is not set")
+    if not service_account_json:
+        raise ValueError("FIREBASE_SERVICE_ACCOUNT environment variable is not set")
     
-    # Clean up the private key
-    private_key = private_key.replace('\\n', '\n')
-    private_key = private_key.strip('"\'')
-    
-    # If the key is base64 encoded, decode it
+    # Parse the JSON
     try:
-        if not private_key.startswith('-----BEGIN PRIVATE KEY-----'):
-            # Try to decode base64
-            decoded_key = base64.b64decode(private_key).decode('utf-8')
-            if decoded_key.startswith('-----BEGIN PRIVATE KEY-----'):
-                private_key = decoded_key
-    except Exception as e:
-        app.logger.warning("Failed to decode base64 private key: %s", str(e))
+        service_account_info = json.loads(service_account_json)
+        app.logger.info("Successfully parsed service account JSON")
+    except json.JSONDecodeError as e:
+        app.logger.error("Failed to parse service account JSON: %s", str(e))
+        raise ValueError("Invalid service account JSON format")
     
-    # Ensure proper PEM format
-    if not private_key.startswith('-----BEGIN PRIVATE KEY-----'):
-        private_key = '-----BEGIN PRIVATE KEY-----\n' + private_key
-    if not private_key.endswith('-----END PRIVATE KEY-----'):
-        private_key = private_key + '\n-----END PRIVATE KEY-----'
-    
-    # Ensure proper line breaks
-    private_key = private_key.replace('\n', '\\n')
-    private_key = private_key.replace('\\n', '\n')
-    
-    # Log the first few characters of the key (for debugging)
-    app.logger.info("Private key starts with: %s", private_key[:50])
-    app.logger.info("Private key ends with: %s", private_key[-50:])
-    
-    # Create the credentials dictionary
-    cred_dict = {
-        "type": "service_account",
-        "project_id": os.getenv("FIREBASE_PROJECT_ID"),
-        "private_key_id": os.getenv("FIREBASE_PRIVATE_KEY_ID"),
-        "private_key": private_key,
-        "client_email": os.getenv("FIREBASE_CLIENT_EMAIL"),
-        "client_id": os.getenv("FIREBASE_CLIENT_ID"),
-        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-        "token_uri": "https://oauth2.googleapis.com/token",
-        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-        "client_x509_cert_url": os.getenv("FIREBASE_CLIENT_CERT_URL")
-    }
-    
-    # Log the credentials (excluding sensitive data)
-    app.logger.info("Initializing Firebase with project ID: %s", cred_dict['project_id'])
-    app.logger.info("Client email: %s", cred_dict['client_email'])
+    # Log non-sensitive information
+    app.logger.info("Initializing Firebase with project ID: %s", service_account_info.get('project_id'))
+    app.logger.info("Client email: %s", service_account_info.get('client_email'))
     
     # Initialize Firebase
-    cred = credentials.Certificate(cred_dict)
+    cred = credentials.Certificate(service_account_info)
     firebase_admin.initialize_app(cred)
     app.logger.info("Firebase initialized successfully")
 except Exception as e:
