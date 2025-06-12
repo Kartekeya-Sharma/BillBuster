@@ -7,6 +7,7 @@ import os
 import logging
 from logging.handlers import RotatingFileHandler
 import json
+import base64
 
 # Load environment variables
 load_dotenv()
@@ -43,9 +44,24 @@ if not app.debug:
 try:
     # Get the private key and ensure it's properly formatted
     private_key = os.getenv("FIREBASE_PRIVATE_KEY", "")
-    if private_key:
-        # Remove any extra quotes and ensure proper line breaks
-        private_key = private_key.replace('\\n', '\n').strip('"')
+    app.logger.info("Private key length: %d", len(private_key) if private_key else 0)
+    
+    if not private_key:
+        raise ValueError("FIREBASE_PRIVATE_KEY environment variable is not set")
+    
+    # Clean up the private key
+    private_key = private_key.replace('\\n', '\n')
+    private_key = private_key.strip('"\'')
+    
+    # Ensure the key starts and ends with the correct markers
+    if not private_key.startswith('-----BEGIN PRIVATE KEY-----'):
+        private_key = '-----BEGIN PRIVATE KEY-----\n' + private_key
+    if not private_key.endswith('-----END PRIVATE KEY-----'):
+        private_key = private_key + '\n-----END PRIVATE KEY-----'
+    
+    # Log the first few characters of the key (for debugging)
+    app.logger.info("Private key starts with: %s", private_key[:50])
+    app.logger.info("Private key ends with: %s", private_key[-50:])
     
     # Create the credentials dictionary
     cred_dict = {
@@ -62,14 +78,17 @@ try:
     }
     
     # Log the credentials (excluding sensitive data)
-    app.logger.info(f"Initializing Firebase with project ID: {cred_dict['project_id']}")
+    app.logger.info("Initializing Firebase with project ID: %s", cred_dict['project_id'])
+    app.logger.info("Client email: %s", cred_dict['client_email'])
     
     # Initialize Firebase
     cred = credentials.Certificate(cred_dict)
     firebase_admin.initialize_app(cred)
     app.logger.info("Firebase initialized successfully")
 except Exception as e:
-    app.logger.error(f'Failed to initialize Firebase: {str(e)}')
+    app.logger.error("Failed to initialize Firebase: %s", str(e))
+    app.logger.error("Exception type: %s", type(e).__name__)
+    app.logger.error("Exception args: %s", e.args)
     raise
 
 # Error handlers
@@ -79,7 +98,7 @@ def not_found_error(error):
 
 @app.errorhandler(500)
 def internal_error(error):
-    app.logger.error(f'Server Error: {error}')
+    app.logger.error('Server Error: %s', error)
     return jsonify({'error': 'Internal server error'}), 500
 
 # Register blueprints
