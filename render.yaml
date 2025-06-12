@@ -6,10 +6,13 @@ services:
     buildCommand: |
       python -m pip install --upgrade pip
       pip install -r requirements.txt
-    startCommand: gunicorn --chdir server app.app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+      export PYTHONPATH=$PYTHONPATH:$(pwd)
+    startCommand: gunicorn --chdir server app.app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120 --log-level info
     envVars:
       - key: FLASK_ENV
         value: production
+      - key: PYTHONUNBUFFERED
+        value: "1"
       - key: FRONTEND_URL
         value: https://billbuster.vercel.app
       - key: FIREBASE_PROJECT_ID
