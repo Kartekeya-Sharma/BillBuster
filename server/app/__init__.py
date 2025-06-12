@@ -53,11 +53,25 @@ try:
     private_key = private_key.replace('\\n', '\n')
     private_key = private_key.strip('"\'')
     
-    # Ensure the key starts and ends with the correct markers
+    # If the key is base64 encoded, decode it
+    try:
+        if not private_key.startswith('-----BEGIN PRIVATE KEY-----'):
+            # Try to decode base64
+            decoded_key = base64.b64decode(private_key).decode('utf-8')
+            if decoded_key.startswith('-----BEGIN PRIVATE KEY-----'):
+                private_key = decoded_key
+    except Exception as e:
+        app.logger.warning("Failed to decode base64 private key: %s", str(e))
+    
+    # Ensure proper PEM format
     if not private_key.startswith('-----BEGIN PRIVATE KEY-----'):
         private_key = '-----BEGIN PRIVATE KEY-----\n' + private_key
     if not private_key.endswith('-----END PRIVATE KEY-----'):
         private_key = private_key + '\n-----END PRIVATE KEY-----'
+    
+    # Ensure proper line breaks
+    private_key = private_key.replace('\n', '\\n')
+    private_key = private_key.replace('\\n', '\n')
     
     # Log the first few characters of the key (for debugging)
     app.logger.info("Private key starts with: %s", private_key[:50])
