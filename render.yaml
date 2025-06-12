@@ -4,9 +4,9 @@ services:
     env: python
     rootDir: server
     buildCommand: |
+      pip install --upgrade pip
       pip install -r requirements.txt
-      pip install gunicorn
-    startCommand: gunicorn --bind 0.0.0.0:$PORT app:app
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
     envVars:
       - key: FLASK_ENV
         value: production
