@@ -1,9 +1,11 @@
-from flask import Flask
+from flask import Flask, jsonify
 from flask_cors import CORS
 import firebase_admin
 from firebase_admin import credentials
 import os
 from dotenv import load_dotenv
+import logging
+from logging.handlers import RotatingFileHandler
 
 # Load environment variables
 load_dotenv()
@@ -12,7 +14,29 @@ def create_app():
     app = Flask(__name__)
     
     # Configure CORS
-    CORS(app, resources={r"/api/*": {"origins": "*"}})
+    if os.getenv('FLASK_ENV') == 'production':
+        CORS(app, resources={
+            r"/api/*": {
+                "origins": [os.getenv('FRONTEND_URL', 'https://billbuster.vercel.app')],
+                "methods": ["GET", "POST", "PUT", "DELETE"],
+                "allow_headers": ["Content-Type", "Authorization"]
+            }
+        })
+    else:
+        CORS(app)
+    
+    # Configure logging
+    if not app.debug:
+        if not os.path.exists('logs'):
+            os.mkdir('logs')
+        file_handler = RotatingFileHandler('logs/billbuster.log', maxBytes=10240, backupCount=10)
+        file_handler.setFormatter(logging.Formatter(
+            '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+        ))
+        file_handler.setLevel(logging.INFO)
+        app.logger.addHandler(file_handler)
+        app.logger.setLevel(logging.INFO)
+        app.logger.info('Billbuster startup')
     
     # Initialize Firebase Admin
     try:
@@ -30,7 +54,18 @@ def create_app():
         })
         firebase_admin.initialize_app(cred)
     except Exception as e:
-        print(f"Error initializing Firebase: {e}")
+        app.logger.error(f'Failed to initialize Firebase: {str(e)}')
+        raise
+    
+    # Error handlers
+    @app.errorhandler(404)
+    def not_found_error(error):
+        return jsonify({'error': 'Not found'}), 404
+
+    @app.errorhandler(500)
+    def internal_error(error):
+        app.logger.error(f'Server Error: {error}')
+        return jsonify({'error': 'Internal server error'}), 500
     
     # Import and register blueprints
     from routes import main as main_blueprint
