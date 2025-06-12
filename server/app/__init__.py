@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 import os
 import logging
 from logging.handlers import RotatingFileHandler
+import json
 
 # Load environment variables
 load_dotenv()
@@ -40,19 +41,33 @@ if not app.debug:
 
 # Initialize Firebase Admin
 try:
-    cred = credentials.Certificate({
+    # Get the private key and ensure it's properly formatted
+    private_key = os.getenv("FIREBASE_PRIVATE_KEY", "")
+    if private_key:
+        # Remove any extra quotes and ensure proper line breaks
+        private_key = private_key.replace('\\n', '\n').strip('"')
+    
+    # Create the credentials dictionary
+    cred_dict = {
         "type": "service_account",
         "project_id": os.getenv("FIREBASE_PROJECT_ID"),
         "private_key_id": os.getenv("FIREBASE_PRIVATE_KEY_ID"),
-        "private_key": os.getenv("FIREBASE_PRIVATE_KEY").replace("\\n", "\n"),
+        "private_key": private_key,
         "client_email": os.getenv("FIREBASE_CLIENT_EMAIL"),
         "client_id": os.getenv("FIREBASE_CLIENT_ID"),
         "auth_uri": "https://accounts.google.com/o/oauth2/auth",
         "token_uri": "https://oauth2.googleapis.com/token",
         "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
         "client_x509_cert_url": os.getenv("FIREBASE_CLIENT_CERT_URL")
-    })
+    }
+    
+    # Log the credentials (excluding sensitive data)
+    app.logger.info(f"Initializing Firebase with project ID: {cred_dict['project_id']}")
+    
+    # Initialize Firebase
+    cred = credentials.Certificate(cred_dict)
     firebase_admin.initialize_app(cred)
+    app.logger.info("Firebase initialized successfully")
 except Exception as e:
     app.logger.error(f'Failed to initialize Firebase: {str(e)}')
     raise
