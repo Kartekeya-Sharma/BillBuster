@@ -60,6 +60,7 @@ try:
             "FIREBASE_CLIENT_ID": client_id,
             "FIREBASE_CLIENT_CERT_URL": client_cert_url
         }.items() if not val]
+        app.logger.error(f"Missing required environment variables: {', '.join(missing)}")
         raise ValueError(f"Missing required environment variables: {', '.join(missing)}")
     
     # Clean up the private key
@@ -100,6 +101,12 @@ except Exception as e:
     app.logger.error("Exception args: %s", e.args)
     raise
 
+# Import routes after app is created
+from . import routes
+
+# Register blueprints
+app.register_blueprint(routes.main)
+
 # Error handlers
 @app.errorhandler(404)
 def not_found_error(error):
@@ -107,12 +114,7 @@ def not_found_error(error):
 
 @app.errorhandler(500)
 def internal_error(error):
-    app.logger.error('Server Error: %s', error)
     return jsonify({'error': 'Internal server error'}), 500
-
-# Register blueprints
-from .routes import main
-app.register_blueprint(main)
 
 # Expose the app instance
 app.app = app 
