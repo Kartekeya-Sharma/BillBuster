@@ -5,6 +5,7 @@ services:
     buildCommand: |
       pip install -r server/requirements.txt
       cd client && npm install
+      cd client && npm install react-dropzone
       cd client && npm run build
     startCommand: cd server && gunicorn wsgi:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120 --log-level debug
     envVars:
