@@ -1,29 +1,24 @@
 services:
   - type: web
-    name: billbuster-api
+    name: billbuster
     env: python
-    rootDir: server
     buildCommand: |
-      python -m pip install --upgrade pip
-      pip install -r requirements.txt
-      export PYTHONPATH=$PYTHONPATH:$(pwd)
-    startCommand: gunicorn wsgi:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120 --log-level debug
+      pip install -r server/requirements.txt
+      cd client && npm install
+      cd client && npm run build
+    startCommand: cd server && gunicorn wsgi:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120 --log-level debug
     envVars:
-      - key: FLASK_ENV
-        value: production
-      - key: PYTHONUNBUFFERED
-        value: "1"
-      - key: FRONTEND_URL
-        value: https://billbuster.vercel.app
-      - key: FIREBASE_PROJECT_ID
-        sync: false
-      - key: FIREBASE_PRIVATE_KEY_ID
-        sync: false
-      - key: FIREBASE_PRIVATE_KEY
-        sync: false
-      - key: FIREBASE_CLIENT_EMAIL
-        sync: false
-      - key: FIREBASE_CLIENT_ID
-        sync: false
-      - key: FIREBASE_CLIENT_CERT_URL
-        sync: false
+      - key: PYTHON_VERSION
+        value: 3.9.0
+      - key: NODE_VERSION
+        value: 16.0.0
+      - key: REACT_APP_API_URL
+        value: https://billbuster.onrender.com
+    staticPublishPath: client/build
+    routes:
+      - type: rewrite
+        source: /api/*
+        destination: /api/:splat
+      - type: rewrite
+        source: /*
+        destination: /index.html

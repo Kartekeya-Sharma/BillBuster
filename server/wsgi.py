@@ -1,13 +1,16 @@
+from app import create_app
 import os
-import sys
 
-# Add the server directory to Python path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+app = create_app()
 
-from app import app
-
-# Set the Flask environment
-os.environ['FLASK_ENV'] = 'production'
+# Serve React App
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def serve(path):
+    if path != "" and os.path.exists(app.static_folder + '/' + path):
+        return send_from_directory(app.static_folder, path)
+    else:
+        return send_from_directory(app.static_folder, 'index.html')
 
 if __name__ == "__main__":
     app.run() 
